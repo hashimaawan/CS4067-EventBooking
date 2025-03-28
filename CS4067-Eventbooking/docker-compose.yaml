@@ -1,0 +1,126 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:latest
+    container_name: postgres-db
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: Pass123
+      POSTGRES_DB: devops
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    networks:
+      - backend_network
+
+  # MongoDB for Notifications
+  mongodb:
+    image: mongo:latest
+    container_name: mongodb
+    restart: always
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - backend_network
+
+  # User Service
+  user_service:
+    build:
+      context: ./Users/backend
+    container_name: user_service
+    restart: always
+    ports:
+      - "5000:5000"
+    depends_on:
+      - postgres
+    environment:
+      DB_USER: postgres
+      DB_HOST: postgres
+      DB_DATABASE: devops
+      DB_PASSWORD: Pass123
+      DB_PORT: 5432
+    networks:
+      - backend_network
+
+  # Events Service
+  events_service:
+    build:
+      context: ./Events/backend
+    container_name: events_service
+    restart: always
+    ports:
+      - "5001:5001"
+    depends_on:
+      - postgres
+    environment:
+      DB_USER: postgres
+      DB_HOST: postgres
+      DB_DATABASE: devops
+      DB_PASSWORD: Pass123
+      DB_PORT: 5432
+    networks:
+      - backend_network
+
+  # Booking Service
+  booking_service:
+    build:
+      context: ./Booking/backend
+    container_name: booking_service
+    restart: always
+    ports:
+      - "5002:5002"
+    depends_on:
+      - postgres
+    environment:
+      DB_USER: postgres
+      DB_HOST: postgres
+      DB_DATABASE: devops
+      DB_PASSWORD: Pass123
+      DB_PORT: 5432
+    networks:
+      - backend_network
+
+  # Notification Service (Uses MongoDB)
+  notification_service:
+    build:
+      context: ./Notifications/backend
+    container_name: notification_service
+    restart: always
+    ports:
+      - "5003:5003"
+    depends_on:
+      - mongodb
+    environment:
+      MONGO_URI: mongodb://mongodb:27017/notifications
+    networks:
+      - backend_network
+
+  # Frontend Service
+  frontend:
+    build:
+      context: ./frontend
+    container_name: frontend-dev
+    restart: always
+    ports:
+      - "3000:3000"
+    networks:
+      - backend_network
+    depends_on:
+      - user_service
+      - events_service
+      - booking_service
+      - notification_service
+
+volumes:
+  pg_data:
+  mongo_data:
+
+networks:
+  backend_network:
+    driver: bridge
